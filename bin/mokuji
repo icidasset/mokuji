@@ -1,0 +1,73 @@
+#!/usr/bin/env ruby
+$LOAD_PATH.unshift File.join(File.dirname(__FILE__), '..', 'lib')
+
+require 'mokuji'
+require 'rubygems'
+require 'thor'
+
+
+class Moki < Thor
+
+
+
+	desc "scan PATH (EXPORT_PATH) (CONVERTING_METHOD)", "Scan a directory by its path. You can also set the export path for the file. The default export path is the same as the path you want to scan. Next to that, you can also set the converting method. The options for that are JSON and HTML. Which defaults to HTML."
+	
+	def scan path_to_scan, export_path = nil, converting_method = 'html'
+	
+		# Convert the paths to absolute paths
+		path_to_scan = File.expand_path(path_to_scan)
+		export_path = File.expand_path(export_path) if export_path
+		
+		# Check if the directory exists
+		unless File.directory?(path_to_scan) then
+		
+			say "The directory that you want to scan, does not exist", :red
+			
+			exit
+		
+		end
+		
+		# Check if the directory isn't empty
+		if Dir.entries(path_to_scan).slice(2..-1).empty? then
+		
+			say "The directory that you want to scan, is empty"
+			
+			exit
+		
+		end
+		
+		# New Mokuji
+		moki = Mokuji::Initializer.new
+		moki.path_to_scan = path_to_scan
+		
+		# Export path check if given
+		if export_path then
+		
+			unless File.directory?(export_path) then
+			
+				say "The directory that you want to export to, does not exist", :red
+				
+				exit
+			
+			else
+			
+				moki.export_path = export_path
+			
+			end
+		
+		end
+		
+		# Please continue
+		moki.converting_method = converting_method.to_sym
+		moki.execute
+		
+		say "Directory list successfully created! =D", :green
+	
+	end
+
+
+
+end
+
+
+Moki.start
