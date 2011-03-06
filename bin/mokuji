@@ -10,9 +10,18 @@ class Moki < Thor
 
 
 
-	desc "scan PATH (EXPORT_PATH) (CONVERTING_METHOD)", "Scan a directory by its path. You can also set the export path for the file. The default export path is the same as the path you want to scan. Next to that, you can also set the converting method. The options for that are JSON and HTML. Which defaults to HTML."
+	desc "scan PATH (EXPORT_PATH) (OUTPUT_TYPE)", "Scan a directory by its path. You can also set the export path for the file. Both can be relative paths. The default export path is the same as the path you want to scan. Next to that, you can also set the output type. The options for that are JSON and HTML. Which defaults to HTML."
 	
-	def scan path_to_scan, export_path = nil, converting_method = 'html'
+	def scan path_to_scan, export_path = nil, output_type = 'html'
+	  
+	  # Check if the given output type exists
+	  unless output_type.match(/^(html|json)$/)
+	  
+	    say "Errr, that output type doesn't exist =/", :red
+	    
+	    exit
+	  
+	  end
 	
 		# Convert the paths to absolute paths
 		path_to_scan = File.expand_path(path_to_scan)
@@ -21,7 +30,7 @@ class Moki < Thor
 		# Check if the directory exists
 		unless File.directory?(path_to_scan) then
 		
-			say "The directory that you want to scan, does not exist", :red
+			say "The directory that you want to scan, does not exist.", :red
 			
 			exit
 		
@@ -30,7 +39,7 @@ class Moki < Thor
 		# Check if the directory isn't empty
 		if Dir.entries(path_to_scan).slice(2..-1).empty? then
 		
-			say "The directory that you want to scan, is empty"
+			say "The directory that you want to scan, is empty."
 			
 			exit
 		
@@ -45,7 +54,7 @@ class Moki < Thor
 		
 			unless File.directory?(export_path) then
 			
-				say "The directory that you want to export to, does not exist", :red
+				say "The directory that you want to export to, does not exist.", :red
 				
 				exit
 			
@@ -58,7 +67,7 @@ class Moki < Thor
 		end
 		
 		# Please continue
-		moki.converting_method = converting_method.to_sym
+		moki.converting_method = output_type.to_sym
 		moki.execute
 		
 		say "Directory list successfully created! =D", :green
