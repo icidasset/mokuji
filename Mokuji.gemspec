@@ -16,8 +16,8 @@ Gem::Specification.new do |s|
   
   s.rubyforge_project = "mokuji"
   
-  s.add_dependency 'json'
-  s.add_dependency 'thor'
+  s.add_dependency 'json', '~> 1.5.1'
+  s.add_dependency 'thor', '~> 0.14.6'
   
   s.add_development_dependency 'rspec', '~> 2.5'
   
