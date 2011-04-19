@@ -1,57 +1,45 @@
+require 'mokuji/validators'
+
 module Mokuji
-
-	#
-	# 	EXPORTER
-	# 	- Exports the data to a file
-	#
-
-	class Exporter
-	
-	
-	
-		attr_accessor :file_data, :converting_method, :file_name, :export_path
-		
-		
-		
-		def execute
-		
-			# Check
-			fail_msg = "You forgot to set some variables."
-			fail_msg << "Make sure you've set the path to scan and the converting method."
-			
-			raise fail_msg unless file_data || converting_method || export_path
-			
-			# Filename check
-			@file_name = 'Untitled' unless file_name
-			
-			# Export path validation
-			raise "The directory you want to export to doesn't exist" unless File.directory?(export_path)
-			
-			# Set file extension
-			file_extension = case converting_method
-			
-				when :json then '.json'
-				when :html then '.html'
-				
-				else '.txt'
-			
-			end
-			
-			# Change to the directory where the file should be saved
-			Dir.chdir(export_path)
-			
-			# Creating the file
-			File::open( file_name + file_extension, 'w' ) do |f|
-			
-				f << file_data
-			
-			end
-		
-		end
-	
-	
-	
-	end # </Exporter>
+  #
+  # { EXPORTER }
+  #
+  # === Info
+  #
+  # Exports the data to a file
+  #
+  # === How to use
+  #
+  # exporter = Mokuji::Exporter.new
+  # exporter.export data_from_converter, export_path
+  
+  class Exporter
+    include Mokuji::Validators
+    
+    def initialize
+      validate_configuration
+    end
+    
+    def export string, path
+      validate_data_from_converter string
+      validate_export_path path
+      
+      data_from_converter = string
+      list_name = (Mokuji::configuration['list_name'] ||= 'Untitled')
+      time = Time.now.strftime('%d_%B_%Y_(%I-%M%p)')
+      file_name = "#{list_name}_-_#{time}"
+      output_type = Mokuji::configuration['output_type']
+      
+      file_extension = case output_type
+        when 'json'                 then 'json'
+        when 'html', 'plain_html'   then 'html'
+        when 'plain_text'           then 'txt'
+      end
+      
+      Dir.chdir(path)
+      
+      File::open("#{file_name}.#{file_extension}", 'w') { |f| f << data_from_converter }
+    end
+  end # </Exporter>
 
 end
-

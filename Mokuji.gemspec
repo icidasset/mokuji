@@ -11,8 +11,8 @@ Gem::Specification.new do |s|
   s.authors     = ['Icid Asset']
   s.email       = ['icid.asset@gmail.com']
   s.homepage    = 'http://icidasset.heroku.com/'
-  s.summary     = %q{Mokuji makes lists from directories}
-  s.description = %q{Make a list from the directory contents and export it in JSON or HTML}
+  s.summary     = %q{Mokuji recursively lists a directory by its path.}
+  s.description = %q{Make a recursive list from a directory its contents and export it in html, json or plain-text}
   
   s.rubyforge_project = "mokuji"
   

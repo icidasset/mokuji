@@ -1,175 +1,162 @@
+require 'mokuji/validators'
+
 module Mokuji
+  #
+  # { CONVERTER }
+  #
+  # === Info
+  #
+  # Converts the data from the scanner to JSON or HTML
+  #
+  # === Output example : String
+  #
+  # <html>
+  #  ...
+  #  <body>
+  #   <h1>Icid</h1>
+  #   <h2>19 April 2011 (03:47PM)</h2>
+  #   <nav>
+  #    <a id="expand_all">Expand all directories</a> ---
+  #    <a id="close_all">Close all directories</a>
+  #   </nav>
+  #   <ul id="list"><li class="file">file.txt</li></ul>
+  #  </body>
+  #  ...
+  # </html>
+  #
+  # === How to use
+  #
+  # converter           =   Mokuji::Converter.new
+  # converter_results   =   converter.convert data_from_scanner
 
-	#
-	# 	CONVERTER
-	# 	- Converts the data from the scanner to JSON or HTML
-	#
-	# 	{ return => String }
-	#
-
-	class Converter
-	
-	
-	
-		attr_accessor :data_from_scanner, :converting_method, :list_name, :time
-		
-		
-		
-		def execute
-		
-			# Data validation
-			data_validation
-			
-			# Time check
-			raise 'Time not set' unless time
-			
-			# Process the data
-			data = case converting_method
-			
-				when :json then toJSON
-				when :html then toHTML
-			
-			end
-		
-		end
-		
-		
-		
-		protected
-		
-		
-		
-		def data_validation
-		
-			# Check if the Object isn't empty
-			if data_from_scanner.empty? then
-			
-				raise 'No data <.<'
-			
-			else
-			
-				case converting_method
-				
-					when :json then raise_error_unless_data_is(Array)
-					when :html then raise_error_unless_data_is(Hash)
-					
-					else
-						raise 'The given converting method is unknown'
-				
-				end
-			
-			end
-		
-		end
-		
-		
-		
-		def raise_error_unless_data_is thisClass
-		
-			# Check if the class of the data Object is what it should be
-			if data_from_scanner.class != thisClass then
-			
-				raise 'If you want to convert data, it should be a(n): ' + thisClass.to_s
-			
-			end
-		
-		end
-		
-		
-		
-		def toJSON
-		
-			require 'json'
-			
-			hash = {
-			
-				"list_name"		=>	list_name,
-				"made_on"		=>	time,
-				"contents"		=>	data_from_scanner
-			
-			}
-			
-			hash.to_json
-		
-		end
-		
-		
-		
-		def toHTML
-		
-			# Convert the data from the scanner to html
-			html_data = toHTML_readContentsFrom( data_from_scanner['contents'] )
-			
-			# Loading some assets
-			assets_path = if defined? Mokuji::LIB_PATH then
-						
-							Mokuji::LIB_PATH + '/mokuji/assets/'
-						
-						else
-						
-						'./lib/mokuji/assets/'
-						
-						end
-			
-			minified_jquery = IO.read(assets_path + 'jquery-1.5.min.js')
-			javascript_code = IO.read(assets_path + 'code.js')
-			stylesheet = IO.read(assets_path + 'stylesheet.css')
-			
-			# And push everything into the html template
-			html_template = %{
-			
-				<!doctype html>
-				<html>
-					<head>
-						<meta charset="utf-8">
-						<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-						<title>#{list_name}</title>
-						<style>#{stylesheet}</style>
-					</head>
-					<body>
-						<h1>#{list_name}</h1>
-						<h2>#{time}</h2>
-						<nav>
-							<a id="expand_all">Expand all directories</a> ---
-							<a id="close_all">Close all directories</a>
-						</nav>
-						<ul id="list">#{html_data}</ul>
-					<script>#{minified_jquery}</script>
-					<script>#{javascript_code}</script>
-					</body>
-				</html>
-			
-			}.strip.gsub(/\t/, '')
-		
-		end
-		
-		
-		
-		def toHTML_readContentsFrom array
-		
-			html = ''
-			
-			array.each do |hash|
-			
-				if hash['type'] == 'directory' then
-				
-					html << '<li class="directory"><span>' + hash['name'] + '</span>'
-					html << '<ul>' + toHTML_readContentsFrom( hash['contents'] ) + '</ul></li>'
-				
-				else
-				
-					html << '<li class="file">' + hash['name'] + '</li>'
-				
-				end
-			
-			end
-			
-			return html
-		
-		end
-	
-	
-	
-	end # </Converter>
+  class Converter
+    include Mokuji::Validators
+    
+    attr_reader :data_from_scanner, :output_type, :list_name, :time
+    
+    def initialize
+      validate_configuration
+    end
+    
+    def convert hash
+      validate_data_from_scanner hash
+      
+      @data_from_scanner = hash
+      @output_type = Mokuji::configuration['output_type']
+      @list_name = (Mokuji::configuration['list_name'] ||= hash['name'])
+      @time = Time.now.strftime('%d %B %Y (%I:%M%p)')
+      
+      return data = case output_type
+        when 'json' then to_json
+        when 'html' then to_html
+        when 'plain_html' then to_html_plain
+        when 'plain_text' then to_plain_text
+      end
+    end
+    
+    private
+    
+    def to_json
+      require 'json'
+      
+      hash = {
+        'list_name' => list_name,
+        'made_on' => time,
+        'contents' => data_from_scanner.to_json
+      }
+      
+      return hash.to_json
+    end
+    
+    def to_html
+      # Convert the data from the scanner to html
+      html_data = to_html__read_directory data_from_scanner['contents']
+      
+      # Loading some assets
+      assets_path = File.join Mokuji::LIB_PATH, '/mokuji/assets/'
+      
+      minified_jquery = IO.read("#{assets_path}jquery-1.5.min.js")
+      javascript_code = IO.read("#{assets_path}code.js")
+      stylesheet = IO.read("#{assets_path}stylesheet.css")
+      
+      # And push everything into the html template
+      return html_template = %Q{
+        <!doctype html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+            <title>#{list_name}</title>
+            <style>#{stylesheet}</style>
+          </head>
+          <body>
+            <h1>#{list_name}</h1>
+            <h2>#{time}</h2>
+            <nav>
+              <a id="expand_all">Expand all directories</a> ---
+              <a id="close_all">Close all directories</a>
+            </nav>
+            <ul id="list">#{html_data}</ul>
+          <script>#{minified_jquery}</script>
+          <script>#{javascript_code}</script>
+          </body>
+        </html>
+      }.strip.gsub(/^(\s){8}/, '')
+    end
+    
+    def to_html_plain
+      # Convert the data from the scanner to plain html
+      html_data = to_html__read_directory data_from_scanner['contents']
+      
+      # And push everything into the html template
+      return html_template = %Q{
+        <!doctype html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+            <title>#{list_name}</title>
+          </head>
+          <body>
+            <h1>#{list_name}</h1>
+            <h2>#{time}</h2>
+            <ul id="list">#{html_data}</ul>
+          </body>
+        </html>
+      }.strip.gsub(/^(\s){8}/, '')
+    end
+    
+    def to_html__read_directory array
+      html = ''
+      
+      array.each do |hash|
+        case hash['type']
+        when 'directory'
+          html << "<li class='directory'><span>#{hash['name']}</span>"
+          html << "<ul>#{to_html__read_directory(hash['contents'])}</ul></li>"
+        when 'file'
+          html << "<li class='file'>#{hash['name']}</li>"
+        end
+      end
+      
+      return html
+    end
+    
+    def to_plain_text
+      # Convert the data from the scanner to plain text
+      return to_plain_text__read_directory '', data_from_scanner['contents']
+    end
+    
+    def to_plain_text__read_directory path, array
+      text = ''
+      
+      array.each do |hash|
+        text << "#{path}#{hash['name']}\n"
+        text << to_plain_text__read_directory("#{path}#{hash['name']}/", hash['contents']) if hash['type'] === 'directory'
+      end
+      
+      return text
+    end
+  end # </Converter>
 
 end

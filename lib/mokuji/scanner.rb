@@ -1,133 +1,85 @@
+require 'mokuji/validators'
+
 module Mokuji
-
-	#
-	# 	SCANNER
-	# 	- Lists the directory contents in an Array (flat) or a Hash (nested)
-	#
-	# 	{ return => Array or Hash }
-	#
-
-	class Scanner
-	
-	
-	
-		attr_accessor :path_to_scan, :converting_method
-		
-		
-		
-		def execute
-		
-			# Validation
-			raise "You can't scan nil, duh." unless path_to_scan
-			raise "The directory you want to scan doesn't exist" unless File.directory?(path_to_scan)
-			
-			# Go to the directory
-			Dir.chdir(path_to_scan)
-			
-			# Get the data
-			data = case converting_method
-			
-				when :json then FlatArray::make
-				when :html then NestedHashes::make
-				
-				else
-					raise 'The given converting method is unknown'
-			
-			end
-		
-		end
-		
-		
-		
-		protected
-		
-		
-		
-		module FlatArray
-		
-			def self.make
-			
-				# Makes a flat array
-				array = Dir.glob('**/**')
-				array.sort!
-			
-			end
-		
-		end
-		
-		
-		
-		module NestedHashes
-		
-			def self.make
-			
-				# Directory (name)
-				path = Dir.pwd
-				path.chomp!('/')
-				
-				rindex = path.rindex('/') + 1
-				directory_name = path.slice(rindex..-1)
-				
-				# Makes a hash with hashes in it
-				NestedHashes::read_directory path, directory_name
-			
-			end
-			
-			def self.read_directory path, directory_name
-			
-				# Set
-				hash = {
-				
-					'type' => 'directory',
-					'name' => directory_name,
-					'contents' => []
-				
-				}
-				
-				# Open the directory
-				d = Dir.entries(path)
-				
-				# Sort it
-				d.sort!
-				
-				# Going over each file and directory
-				for x in d
-				
-					# Hide certain files/directories
-					if x == '.' || x == '..' || x.slice(0) == '.' then; next; end
-					
-					# Stuff
-					x_path = path + '/' + x
-					
-					if File.directory? x_path then
-					
-						hash['contents'] << NestedHashes::read_directory(x_path, x)
-					
-					else
-					
-						new_file_hash = {
-							
-							'type' => 'file',
-							'name' => x
-						
-						}
-						
-						hash['contents'] << new_file_hash
-					
-					end
-				
-				end
-				
-				# Return
-				return hash
-			
-			end
-		
-		end
-	
-	
-	
-	end # </Scanner>
+  #
+  # { SCANNER }
+  #
+  # ==== Info
+  #
+  # Lists the directory contents in nested hashes / arrays
+  # Dot files are hidden by default
+  #
+  # ==== Output example : Hash
+  #
+  # example = {
+  #  type: 'directory'
+  #  name: 'I am an example'
+  #  contents: [ directory_hash, file_hash, file_hash ]
+  # }
+  #
+  # ==== How to use
+  #
+  # scanner           =   Mokuji::Scanner.new
+  # scanner_results   =   scanner.scan '/usr/local/Cellar/'
+  
+  class Scanner
+    include Mokuji::Validators
+    
+    attr_reader :path_to_scan
+    
+    def initialize
+      validate_configuration
+    end
+    
+    def scan path
+      validate_import_path path
+      @path_to_scan = path
+      return make_collection
+    end
+    
+    private
+    
+    def make_collection
+      directory_name = File.basename(@path_to_scan)
+      return read_directory(@path_to_scan, directory_name)
+    end
+      
+    def read_directory path, directory_name
+      # Create new hash
+      hash = {
+        'type' => 'directory',
+        'name' => directory_name,
+        'contents' => []
+      }
+      
+      # Going over each file and directory
+      d = Dir.entries(path).sort
+      
+      # Keep certain files/directories out of the list
+      ['.', '..', '.DS_Store', 'Thumbs.db'].each { |str| d.delete str }
+      
+      # Optional
+      d.delete_if { |x| x[0] === '.' } unless Mokuji::configuration['show_dot_files']
+      
+      # Loop over each item
+      d.each do |x|
+        x_path = path + '/' + x
+        
+        if File.directory? x_path
+          hash['contents'] << read_directory(x_path, x)
+        else
+          new_file_hash = {
+            'type' => 'file',
+            'name' => x
+          }
+          
+          hash['contents'] << new_file_hash
+        end
+      end
+      
+      # Return
+      return hash
+    end
+  end # </Scanner>
 
 end
-
