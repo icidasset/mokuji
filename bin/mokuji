@@ -6,6 +6,9 @@ require 'rubygems'
 require 'thor'
 
 class Moki < Thor
+  #
+  # cmnd : List
+  #
   desc "list PATH (EXPORT_PATH)", "Recursively list a directory by its path."
   long_desc %Q{
     Recursively list a directory by its path.
@@ -29,6 +32,17 @@ class Moki < Thor
     rescue RuntimeError => error_message
       say error_message.to_s, :red
     end
+  end
+  
+  #
+  # cmnd : Version
+  #
+  map '-v' => :version
+  desc "version", "Mokuji version"
+  
+  def version
+    require 'mokuji/version'
+    say 'v' + Mokuji::VERSION
   end
 end
 
