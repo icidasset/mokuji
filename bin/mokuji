@@ -11,10 +11,10 @@ class Moki < Thor
   #
   desc "list PATH (EXPORT_PATH)", "Recursively list a directory by its path."
   long_desc %Q{
-    Recursively list a directory by its path.
-    You can also set the export path for the file.
-    Both can be relative paths.
+    Recursively list a directory by its (relative) path.
     The default export path is the same as the first path.
+    \n
+    Available output types: html(default), plain_html, json, plain_text
   }
   
   method_options :show_dot_files => :boolean, :output_type => :string
